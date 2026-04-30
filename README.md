@@ -37,6 +37,22 @@ Start here:
 - [Milestones](docs/solodesk-milestones.md)
 - [Codex Prompt Pack](docs/prompts/README.md)
 
-## Development status
+## Run locally
 
-This repository is currently in planning/scaffolding mode. Implementation should proceed milestone by milestone using the prompts under `docs/prompts/`.
+1. Install dependencies:
+`npm install`
+2. Start dev server:
+`npm run dev`
+3. Open:
+`http://127.0.0.1:5173`
+
+## Current status
+
+Milestones 0-6 are implemented:
+- Foundation and setup flow
+- Clients and projects
+- Tasks and global Kanban
+- Docs with Tiptap editor and slash commands
+- Manual time tracking
+- Mini invoices
+- Import/export backup, trash restore/permanent delete, and UI polish
