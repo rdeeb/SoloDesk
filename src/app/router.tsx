@@ -64,47 +64,52 @@ function PlaceholderPage({ title }: { title: string }) {
   );
 }
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+  [
+    {
+      path: "/setup",
+      element: <SetupOnlyRoute />
+    },
+    {
+      path: "/",
+      element: <SetupRequiredRoute />,
+      children: [
+        { index: true, element: <DashboardPage /> },
+        { path: "clients", element: <ClientsListPage /> },
+        { path: "clients/new", element: <ClientCreatePage /> },
+        { path: "clients/:clientId", element: <ClientDetailPage /> },
+        { path: "clients/:clientId/edit", element: <ClientEditPage /> },
+        { path: "projects", element: <ProjectsListPage /> },
+        { path: "projects/new", element: <ProjectCreatePage /> },
+        { path: "projects/:projectId", element: <ProjectDetailPage /> },
+        { path: "projects/:projectId/edit", element: <ProjectEditPage /> },
+        { path: "projects/:projectId/tasks", element: <TasksListPage /> },
+        { path: "projects/:projectId/tasks/new", element: <TaskCreatePage /> },
+        { path: "projects/:projectId/board", element: <ProjectBoardPage /> },
+        { path: "projects/:projectId/docs", element: <ProjectDocsPage /> },
+        { path: "projects/:projectId/time", element: <TimePage /> },
+        { path: "projects/:projectId/invoices", element: <InvoicesListPage /> },
+        { path: "projects/:projectId/invoices/new", element: <InvoiceCreatePage /> },
+        { path: "tasks", element: <TasksListPage /> },
+        { path: "tasks/new", element: <TaskCreatePage /> },
+        { path: "tasks/:taskId/edit", element: <TaskEditPage /> },
+        { path: "docs", element: <DocsListPage /> },
+        { path: "docs/:docId", element: <DocEditorPage /> },
+        { path: "time", element: <TimePage /> },
+        { path: "invoices", element: <InvoicesListPage /> },
+        { path: "invoices/new", element: <InvoiceCreatePage /> },
+        { path: "invoices/:invoiceId", element: <InvoiceDetailPage /> },
+        { path: "invoices/:invoiceId/print", element: <InvoicePrintPage /> },
+        { path: "trash", element: <TrashPage /> },
+        { path: "settings", element: <SettingsPage /> }
+      ]
+    },
+    {
+      path: "*",
+      element: <Navigate to="/" replace />
+    }
+  ],
   {
-    path: "/setup",
-    element: <SetupOnlyRoute />
-  },
-  {
-    path: "/",
-    element: <SetupRequiredRoute />,
-    children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "clients", element: <ClientsListPage /> },
-      { path: "clients/new", element: <ClientCreatePage /> },
-      { path: "clients/:clientId", element: <ClientDetailPage /> },
-      { path: "clients/:clientId/edit", element: <ClientEditPage /> },
-      { path: "projects", element: <ProjectsListPage /> },
-      { path: "projects/new", element: <ProjectCreatePage /> },
-      { path: "projects/:projectId", element: <ProjectDetailPage /> },
-      { path: "projects/:projectId/edit", element: <ProjectEditPage /> },
-      { path: "projects/:projectId/tasks", element: <TasksListPage /> },
-      { path: "projects/:projectId/tasks/new", element: <TaskCreatePage /> },
-      { path: "projects/:projectId/board", element: <ProjectBoardPage /> },
-      { path: "projects/:projectId/docs", element: <ProjectDocsPage /> },
-      { path: "projects/:projectId/time", element: <TimePage /> },
-      { path: "projects/:projectId/invoices", element: <InvoicesListPage /> },
-      { path: "projects/:projectId/invoices/new", element: <InvoiceCreatePage /> },
-      { path: "tasks", element: <TasksListPage /> },
-      { path: "tasks/new", element: <TaskCreatePage /> },
-      { path: "tasks/:taskId/edit", element: <TaskEditPage /> },
-      { path: "docs", element: <DocsListPage /> },
-      { path: "docs/:docId", element: <DocEditorPage /> },
-      { path: "time", element: <TimePage /> },
-      { path: "invoices", element: <InvoicesListPage /> },
-      { path: "invoices/new", element: <InvoiceCreatePage /> },
-      { path: "invoices/:invoiceId", element: <InvoiceDetailPage /> },
-      { path: "invoices/:invoiceId/print", element: <InvoicePrintPage /> },
-      { path: "trash", element: <TrashPage /> },
-      { path: "settings", element: <SettingsPage /> }
-    ]
-  },
-  {
-    path: "*",
-    element: <Navigate to="/" replace />
+    basename: import.meta.env.BASE_URL
   }
-]);
+);
