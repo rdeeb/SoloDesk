@@ -1,12 +1,15 @@
 import { z } from "zod";
+import { CURRENCY_OPTIONS } from "@/shared/types/currency";
 
 const maybeString = z.string().optional();
 const maybeNumber = z.number().optional();
+const currencySchema = z.enum(CURRENCY_OPTIONS);
+const maybeCurrencySchema = currencySchema.optional();
 
 const workspaceSettingsSchema = z.object({
   id: z.string(),
   workspaceName: z.string(),
-  defaultCurrency: z.string(),
+  defaultCurrency: currencySchema,
   defaultHourlyRate: maybeNumber,
   taxEnabled: z.boolean(),
   defaultTaxName: maybeString,
@@ -29,7 +32,7 @@ const clientSchema = z.object({
   website: maybeString,
   billingAddress: maybeString,
   defaultHourlyRate: maybeNumber,
-  currency: maybeString,
+  currency: maybeCurrencySchema,
   contractStatus: z.enum(["lead", "active", "paused", "completed", "lost"]).optional(),
   notes: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string(),
@@ -45,7 +48,7 @@ const projectSchema = z.object({
   status: z.enum(["active", "paused", "completed", "archived"]),
   hourlyRate: maybeNumber,
   budgetAmount: maybeNumber,
-  currency: maybeString,
+  currency: maybeCurrencySchema,
   startDate: maybeString,
   dueDate: maybeString,
   createdAt: z.string(),
@@ -113,7 +116,7 @@ const invoiceSchema = z.object({
   status: z.enum(["draft", "sent", "paid", "void"]),
   issueDate: z.string(),
   dueDate: maybeString,
-  currency: z.string(),
+  currency: currencySchema,
   taxEnabled: z.boolean(),
   taxName: maybeString,
   taxRate: maybeNumber,

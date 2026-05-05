@@ -1,9 +1,11 @@
+import type { CurrencyCode } from "@/shared/types/currency";
+
 export type EditorJSON = Record<string, unknown>;
 
 export interface WorkspaceSettings {
   id: string;
   workspaceName: string;
-  defaultCurrency: string;
+  defaultCurrency: CurrencyCode;
   defaultHourlyRate?: number;
   taxEnabled: boolean;
   defaultTaxName?: string;
@@ -26,7 +28,7 @@ export interface Client {
   website?: string;
   billingAddress?: string;
   defaultHourlyRate?: number;
-  currency?: string;
+  currency?: CurrencyCode;
   contractStatus?: "lead" | "active" | "paused" | "completed" | "lost";
   notes?: EditorJSON;
   createdAt: string;
@@ -42,7 +44,7 @@ export interface Project {
   status: "active" | "paused" | "completed" | "archived";
   hourlyRate?: number;
   budgetAmount?: number;
-  currency?: string;
+  currency?: CurrencyCode;
   startDate?: string;
   dueDate?: string;
   createdAt: string;
@@ -110,7 +112,7 @@ export interface Invoice {
   status: "draft" | "sent" | "paid" | "void";
   issueDate: string;
   dueDate?: string;
-  currency: string;
+  currency: CurrencyCode;
   taxEnabled: boolean;
   taxName?: string;
   taxRate?: number;

@@ -1,4 +1,5 @@
 import type { Client } from "@/shared/types/domain";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export interface ClientFormValues {
   name: string;
@@ -9,7 +10,7 @@ export interface ClientFormValues {
   website: string;
   billingAddress: string;
   defaultHourlyRate?: number;
-  currency: string;
+  currency: CurrencyCode | "";
   contractStatus?: Client["contractStatus"];
   notes: string;
 }

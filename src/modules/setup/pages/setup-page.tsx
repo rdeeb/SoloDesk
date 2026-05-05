@@ -5,10 +5,11 @@ import { Button } from "@/shared/components/ui/button";
 import { settingsRepository } from "@/modules/settings/settings.repository";
 import type { SetupFormValues } from "@/modules/settings/settings.types";
 import { completeSetup } from "@/modules/setup/setup.service";
+import { CURRENCY_OPTIONS, CurrencyCode } from "@/shared/types/currency";
 
 const INITIAL_VALUES: SetupFormValues = {
   workspaceName: "",
-  defaultCurrency: "USD",
+  defaultCurrency: CurrencyCode.USD,
   taxEnabled: false,
   defaultTaxName: "Tax",
   defaultTaxRate: undefined,
@@ -17,18 +18,13 @@ const INITIAL_VALUES: SetupFormValues = {
   confirmDefaultKanbanColumns: true
 };
 
-const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "PAB"];
-
 export function SetupPage() {
   const navigate = useNavigate();
   const [values, setValues] = useState<SetupFormValues>(INITIAL_VALUES);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setupCompleted = useLiveQuery(
-    async () => {
-      const settings = await settingsRepository.get();
-      return Boolean(settings?.setupCompleted);
-    },
+    () => settingsRepository.ensureSetupCompletedFromLocalData(),
     [],
     null
   );
@@ -112,9 +108,9 @@ export function SetupPage() {
             <select
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               value={values.defaultCurrency}
-              onChange={(event) => setValues((prev) => ({ ...prev, defaultCurrency: event.target.value }))}
+              onChange={(event) => setValues((prev) => ({ ...prev, defaultCurrency: event.target.value as CurrencyCode }))}
             >
-              {CURRENCIES.map((currency) => (
+              {CURRENCY_OPTIONS.map((currency) => (
                 <option key={currency} value={currency}>
                   {currency}
                 </option>

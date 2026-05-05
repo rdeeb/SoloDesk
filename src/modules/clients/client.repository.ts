@@ -3,6 +3,7 @@ import { createId } from "@/shared/lib/id";
 import { textToEditorJson } from "@/shared/lib/editor-json";
 import type { Client } from "@/shared/types/domain";
 import type { ClientFormValues } from "@/modules/clients/client.types";
+import { normalizeCurrency } from "@/shared/types/currency";
 
 function normalizeOptional(value: string) {
   const trimmed = value.trim();
@@ -35,7 +36,7 @@ export const clientRepository = {
       website: normalizeOptional(values.website),
       billingAddress: normalizeOptional(values.billingAddress),
       defaultHourlyRate: values.defaultHourlyRate,
-      currency: normalizeOptional(values.currency),
+      currency: normalizeCurrency(values.currency),
       contractStatus: values.contractStatus,
       notes: textToEditorJson(values.notes),
       createdAt: now,
@@ -62,7 +63,7 @@ export const clientRepository = {
       website: normalizeOptional(values.website),
       billingAddress: normalizeOptional(values.billingAddress),
       defaultHourlyRate: values.defaultHourlyRate,
-      currency: normalizeOptional(values.currency),
+      currency: normalizeCurrency(values.currency),
       contractStatus: values.contractStatus,
       notes: textToEditorJson(values.notes),
       updatedAt: new Date().toISOString()

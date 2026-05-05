@@ -26,6 +26,11 @@ export interface BillableSummary {
   billableAmount: number;
 }
 
+export interface TimeEntryFilters {
+  projectId?: string;
+  taskId?: string;
+}
+
 export interface ClientTimeSummary extends BillableSummary {
   clientId: string;
   clientName: string;

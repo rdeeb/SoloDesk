@@ -28,7 +28,7 @@ import { InvoicePrintPage } from "@/modules/invoices/pages/invoice-print-page";
 import { TrashPage } from "@/modules/trash/pages/trash-page";
 
 function SetupRequiredRoute() {
-  const isComplete = useLiveQuery(() => settingsRepository.isSetupCompleted(), [], null);
+  const isComplete = useLiveQuery(() => settingsRepository.ensureSetupCompletedFromLocalData(), [], null);
 
   if (isComplete === null) {
     return <div className="p-6 text-sm text-muted-foreground">Loading workspace...</div>;
@@ -42,7 +42,7 @@ function SetupRequiredRoute() {
 }
 
 function SetupOnlyRoute() {
-  const isComplete = useLiveQuery(() => settingsRepository.isSetupCompleted(), [], null);
+  const isComplete = useLiveQuery(() => settingsRepository.ensureSetupCompletedFromLocalData(), [], null);
 
   if (isComplete === null) {
     return <div className="p-6 text-sm text-muted-foreground">Loading setup...</div>;

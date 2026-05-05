@@ -1,9 +1,10 @@
 import type { Task } from "@/shared/types/domain";
+import { EMPTY_EDITOR_JSON } from "@/shared/lib/editor-json";
 
 export interface TaskFormValues {
   projectId: string;
   title: string;
-  description: string;
+  description: Task["description"];
   statusId: string;
   priority?: Task["priority"];
   dueDate: string;
@@ -21,7 +22,7 @@ export interface TaskFilters {
 export const TASK_FORM_DEFAULTS: TaskFormValues = {
   projectId: "",
   title: "",
-  description: "",
+  description: EMPTY_EDITOR_JSON,
   statusId: "",
   priority: undefined,
   dueDate: "",

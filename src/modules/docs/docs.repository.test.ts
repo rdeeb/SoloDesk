@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db/db";
 import { docsRepository } from "@/modules/docs/docs.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
+import { CurrencyCode } from "@/shared/types/currency";
 
 describe("docsRepository", () => {
   it("creates standalone and project docs, updates them, and excludes soft-deleted docs", async () => {
@@ -12,7 +13,7 @@ describe("docsRepository", () => {
       status: "active",
       hourlyRate: undefined,
       budgetAmount: undefined,
-      currency: "USD",
+      currency: CurrencyCode.USD,
       startDate: "",
       dueDate: ""
     });
