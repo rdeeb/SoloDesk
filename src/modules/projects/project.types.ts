@@ -1,4 +1,5 @@
 import type { Project } from "@/shared/types/domain";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export interface ProjectFormValues {
   clientId?: string;
@@ -7,7 +8,7 @@ export interface ProjectFormValues {
   status: Project["status"];
   hourlyRate?: number;
   budgetAmount?: number;
-  currency: string;
+  currency: CurrencyCode | "";
   startDate: string;
   dueDate: string;
 }

@@ -1,7 +1,8 @@
-import { useMemo, useState, type FormEvent } from "react";
-import type { KanbanStatus, Project, Task } from "@/shared/types/domain";
+import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
+import type { KanbanStatus, Project } from "@/shared/types/domain";
 import { Button } from "@/shared/components/ui/button";
 import { TASK_FORM_DEFAULTS, type TaskFormValues } from "@/modules/tasks/task.types";
+import { EMPTY_EDITOR_JSON } from "@/shared/lib/editor-json";
 
 interface TaskFormProps {
   projects: Project[];
@@ -12,7 +13,9 @@ interface TaskFormProps {
   onSubmit: (values: TaskFormValues) => Promise<void>;
 }
 
-const PRIORITIES: NonNullable<Task["priority"]>[] = ["low", "medium", "high", "urgent"];
+const NovelEditor = lazy(() =>
+  import("@/modules/editor/components/novel-editor").then((module) => ({ default: module.NovelEditor }))
+);
 
 export function TaskForm({
   projects,
@@ -23,14 +26,23 @@ export function TaskForm({
   onSubmit
 }: TaskFormProps) {
   const defaultStatusId = statuses.find((status) => !status.isDone)?.id ?? statuses[0]?.id ?? "";
+  const defaultProjectId = lockedProjectId ?? initialValues?.projectId ?? projects[0]?.id ?? "";
   const [values, setValues] = useState<TaskFormValues>({
     ...TASK_FORM_DEFAULTS,
     statusId: defaultStatusId,
     ...initialValues,
-    projectId: lockedProjectId ?? initialValues?.projectId ?? ""
+    projectId: defaultProjectId
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setValues((prev) => ({
+      ...prev,
+      projectId: prev.projectId || defaultProjectId,
+      statusId: prev.statusId || defaultStatusId
+    }));
+  }, [defaultProjectId, defaultStatusId]);
 
   const isValid = useMemo(() => {
     return values.title.trim().length > 0 && values.projectId.trim().length > 0 && values.statusId.trim().length > 0;
@@ -56,76 +68,19 @@ export function TaskForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-1">
-          <span className="text-sm font-medium">Title *</span>
-          <input
-            value={values.title}
-            onChange={(event) => setValues((prev) => ({ ...prev, title: event.target.value }))}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-            required
-          />
-        </label>
+    <form onSubmit={handleSubmit} className="flex h-full min-h-[calc(100vh-9rem)] flex-col gap-5">
+      <input
+        value={values.title}
+        onChange={(event) => setValues((prev) => ({ ...prev, title: event.target.value }))}
+        className="w-full border-none bg-transparent px-0 py-1 text-3xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
+        placeholder="Untitled task"
+        aria-label="Task title"
+        required
+      />
 
-        <label className="space-y-1">
-          <span className="text-sm font-medium">Project *</span>
-          <select
-            value={values.projectId}
-            disabled={Boolean(lockedProjectId)}
-            onChange={(event) => setValues((prev) => ({ ...prev, projectId: event.target.value }))}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-70"
-            required
-          >
-            <option value="">Select project</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-sm font-medium">Status *</span>
-          <select
-            value={values.statusId}
-            onChange={(event) => setValues((prev) => ({ ...prev, statusId: event.target.value }))}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-            required
-          >
-            <option value="">Select status</option>
-            {statuses.map((status) => (
-              <option key={status.id} value={status.id}>
-                {status.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-sm font-medium">Priority</span>
-          <select
-            value={values.priority ?? ""}
-            onChange={(event) =>
-              setValues((prev) => ({
-                ...prev,
-                priority: event.target.value ? (event.target.value as Task["priority"]) : undefined
-              }))
-            }
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">Not set</option>
-            {PRIORITIES.map((priority) => (
-              <option key={priority} value={priority}>
-                {priority}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-sm font-medium">Due date</span>
+      <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Due date</span>
           <input
             type="date"
             value={values.dueDate}
@@ -134,8 +89,8 @@ export function TaskForm({
           />
         </label>
 
-        <label className="space-y-1">
-          <span className="text-sm font-medium">Estimate (minutes)</span>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">Estimate</span>
           <input
             type="number"
             min={0}
@@ -148,33 +103,38 @@ export function TaskForm({
               }))
             }
             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            placeholder="Minutes"
           />
+        </label>
+
+        <label className="flex items-center gap-2 pt-5 text-sm">
+          <input
+            type="checkbox"
+            checked={values.billable}
+            onChange={(event) => setValues((prev) => ({ ...prev, billable: event.target.checked }))}
+          />
+          Billable
         </label>
       </div>
 
-      <label className="space-y-1">
-        <span className="text-sm font-medium">Description</span>
-        <textarea
-          value={values.description}
-          onChange={(event) => setValues((prev) => ({ ...prev, description: event.target.value }))}
-          className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
-        />
-      </label>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={values.billable}
-          onChange={(event) => setValues((prev) => ({ ...prev, billable: event.target.checked }))}
-        />
-        Billable
-      </label>
+      <section className="flex min-h-0 flex-1 flex-col gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Description</span>
+        <Suspense fallback={<div className="min-h-[320px] py-1 text-sm text-muted-foreground">Loading editor...</div>}>
+          <NovelEditor
+            content={values.description ?? EMPTY_EDITOR_JSON}
+            onContentChange={(description) => setValues((prev) => ({ ...prev, description }))}
+            className="min-h-0 flex-1"
+          />
+        </Suspense>
+      </section>
 
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-      <Button type="submit" disabled={isSubmitting || !isValid}>
-        {isSubmitting ? "Saving..." : submitLabel}
-      </Button>
+      <div className="flex justify-end border-t pt-4">
+        <Button type="submit" disabled={isSubmitting || !isValid}>
+          {isSubmitting ? "Saving..." : submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }

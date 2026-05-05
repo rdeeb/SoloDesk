@@ -5,6 +5,7 @@ import { docsRepository } from "@/modules/docs/docs.repository";
 import { invoiceRepository } from "@/modules/invoices/invoice.repository";
 import { kanbanRepository } from "@/modules/kanban/kanban.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
+import { settingsRepository } from "@/modules/settings/settings.repository";
 import { timeRepository } from "@/modules/time/time.repository";
 
 export function DashboardPage() {
@@ -21,6 +22,7 @@ export function DashboardPage() {
   const timeEntries = useLiveQuery(() => timeRepository.listActive(), [], []);
   const recentDocs = useLiveQuery(() => docsRepository.listRecent(3), [], []);
   const invoices = useLiveQuery(() => invoiceRepository.listActive(), [], []);
+  const settings = useLiveQuery(() => settingsRepository.get(), [], null);
 
   const statusById = useMemo(() => new Map(statuses.map((status) => [status.id, status])), [statuses]);
   const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
@@ -80,7 +82,7 @@ export function DashboardPage() {
   const billableHours = (billableSummary.billableMinutes / 60).toFixed(2);
   const billableAmount = billableSummary.billableAmount.toLocaleString("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: projectById.get(projectFilter)?.currency ?? settings?.defaultCurrency ?? "USD",
     maximumFractionDigits: 2
   });
   const draftInvoices = filteredInvoices.filter((invoice) => invoice.status === "draft").length;

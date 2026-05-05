@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Navigate, useParams } from "react-router-dom";
 import { clientRepository } from "@/modules/clients/client.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
+import { settingsRepository } from "@/modules/settings/settings.repository";
 import { taskRepository } from "@/modules/tasks/task.repository";
 import { TimeEntryForm } from "@/modules/time/components/time-entry-form";
 import { timeRepository } from "@/modules/time/time.repository";
@@ -10,10 +11,10 @@ function formatHours(minutes: number) {
   return (minutes / 60).toFixed(2);
 }
 
-function formatCurrency(amount: number) {
+function formatCurrency(amount: number, currency: string) {
   return amount.toLocaleString("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 2
   });
 }
@@ -35,6 +36,7 @@ export function TimePage() {
   const projects = useLiveQuery(() => projectRepository.listActive(), [], []);
   const clients = useLiveQuery(() => clientRepository.listActive(), [], []);
   const tasks = useLiveQuery(() => taskRepository.listActive(), [], []);
+  const settings = useLiveQuery(() => settingsRepository.get(), [], null);
   const summary = useLiveQuery(() => timeRepository.getBillableSummary(projectId), [projectId], {
     billableMinutes: 0,
     billableAmount: 0
@@ -50,9 +52,11 @@ export function TimePage() {
   }
 
   const projectNameById = new Map(projects.map((item) => [item.id, item.name]));
+  const projectCurrencyById = new Map(projects.map((item) => [item.id, item.currency]));
   const clientNameById = new Map(clients.map((item) => [item.id, item.name]));
   const projectClientIdById = new Map(projects.map((item) => [item.id, item.clientId]));
   const taskTitleById = new Map(tasks.map((item) => [item.id, item.title]));
+  const displayCurrency = project?.currency ?? settings?.defaultCurrency ?? "USD";
 
   return (
     <div className="space-y-5">
@@ -75,7 +79,7 @@ export function TimePage() {
         </article>
         <article className="rounded-lg border bg-card p-4">
           <p className="text-sm text-muted-foreground">Unbilled Billable Amount</p>
-          <p className="mt-1 text-xl font-semibold">{formatCurrency(summary.billableAmount)}</p>
+          <p className="mt-1 text-xl font-semibold">{formatCurrency(summary.billableAmount, displayCurrency)}</p>
         </article>
       </section>
 
@@ -92,7 +96,7 @@ export function TimePage() {
                 <li key={item.clientId} className="flex items-center justify-between px-4 py-3 text-sm">
                   <span>{item.clientName}</span>
                   <span className="text-muted-foreground">
-                    {formatHours(item.billableMinutes)}h · {formatCurrency(item.billableAmount)}
+                    {formatHours(item.billableMinutes)}h - {formatCurrency(item.billableAmount, settings?.defaultCurrency ?? "USD")}
                   </span>
                 </li>
               ))}
@@ -128,7 +132,9 @@ export function TimePage() {
                 <td className="px-4 py-3 text-muted-foreground">{formatHours(entry.durationMinutes)}h</td>
                 <td className="px-4 py-3 text-muted-foreground">{entry.billable ? "Yes" : "No"}</td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {entry.hourlyRate !== undefined ? formatCurrency(entry.hourlyRate) : "-"}
+                  {entry.hourlyRate !== undefined
+                    ? formatCurrency(entry.hourlyRate, projectCurrencyById.get(entry.projectId) ?? settings?.defaultCurrency ?? "USD")
+                    : "-"}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button

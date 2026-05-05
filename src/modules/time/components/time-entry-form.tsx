@@ -8,13 +8,15 @@ import { Button } from "@/shared/components/ui/button";
 
 interface TimeEntryFormProps {
   lockedProjectId?: string;
+  lockedTaskId?: string;
   onSubmit: (values: { projectId: string; taskId?: string; description: string; entryDate: string; durationMinutes: number; billable: boolean; }) => Promise<void>;
 }
 
-export function TimeEntryForm({ lockedProjectId, onSubmit }: TimeEntryFormProps) {
+export function TimeEntryForm({ lockedProjectId, lockedTaskId, onSubmit }: TimeEntryFormProps) {
   const [values, setValues] = useState<TimeEntryFormValues>({
     ...TIME_FORM_DEFAULTS,
-    projectId: lockedProjectId ?? TIME_FORM_DEFAULTS.projectId
+    projectId: lockedProjectId ?? TIME_FORM_DEFAULTS.projectId,
+    taskId: lockedTaskId
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function TimeEntryForm({ lockedProjectId, onSubmit }: TimeEntryFormProps)
       setIsSubmitting(true);
       await onSubmit({
         projectId: values.projectId,
-        taskId: values.taskId,
+        taskId: lockedTaskId ?? values.taskId,
         description: values.description,
         entryDate: values.entryDate,
         durationMinutes,
@@ -61,6 +63,7 @@ export function TimeEntryForm({ lockedProjectId, onSubmit }: TimeEntryFormProps)
       setValues((prev) => ({
         ...TIME_FORM_DEFAULTS,
         projectId: lockedProjectId ?? prev.projectId,
+        taskId: lockedTaskId,
         entryDate: prev.entryDate
       }));
     } catch (caught) {
@@ -93,9 +96,10 @@ export function TimeEntryForm({ lockedProjectId, onSubmit }: TimeEntryFormProps)
       </select>
 
       <select
-        value={values.taskId ?? ""}
+        value={lockedTaskId ?? values.taskId ?? ""}
         onChange={(event) => setValues((prev) => ({ ...prev, taskId: event.target.value || undefined }))}
-        className="rounded-md border bg-background px-3 py-2 text-sm"
+        disabled={Boolean(lockedTaskId)}
+        className="rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-70"
       >
         <option value="">No task</option>
         {tasks.map((task) => (

@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { docsRepository } from "@/modules/docs/docs.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
-import { DocEditor } from "@/modules/editor/components/doc-editor";
 import type { EditorJSON } from "@/shared/types/domain";
 import { Button } from "@/shared/components/ui/button";
+
+const NovelEditor = lazy(() => import("@/modules/editor/components/novel-editor").then((module) => ({ default: module.NovelEditor })));
 
 export function DocEditorPage() {
   const navigate = useNavigate();
@@ -131,7 +132,9 @@ export function DocEditorPage() {
         </div>
       </div>
 
-      <DocEditor content={content} onContentChange={setContent} />
+      <Suspense fallback={<div className="min-h-[520px] py-1 text-sm text-muted-foreground">Loading editor...</div>}>
+        <NovelEditor content={content} onContentChange={setContent} minHeightClassName="min-h-[520px]" />
+      </Suspense>
     </div>
   );
 }

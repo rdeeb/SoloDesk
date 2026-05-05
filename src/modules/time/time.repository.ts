@@ -1,7 +1,7 @@
 import { db } from "@/db/db";
 import { createId } from "@/shared/lib/id";
 import type { TimeEntry } from "@/shared/types/domain";
-import type { BillableSummary, ClientTimeSummary, TimeEntryCreateValues } from "@/modules/time/time.types";
+import type { BillableSummary, ClientTimeSummary, TimeEntryCreateValues, TimeEntryFilters } from "@/modules/time/time.types";
 
 function normalizeOptional(value: string) {
   const trimmed = value.trim();
@@ -9,10 +9,12 @@ function normalizeOptional(value: string) {
 }
 
 export const timeRepository = {
-  async listActive(projectId?: string): Promise<TimeEntry[]> {
+  async listActive(filters?: string | TimeEntryFilters): Promise<TimeEntry[]> {
+    const normalizedFilters = typeof filters === "string" ? { projectId: filters } : filters ?? {};
     const rows = await db.timeEntries.toCollection().filter((entry) => !entry.deletedAt).toArray();
     return rows
-      .filter((entry) => (projectId ? entry.projectId === projectId : true))
+      .filter((entry) => (normalizedFilters.projectId ? entry.projectId === normalizedFilters.projectId : true))
+      .filter((entry) => (normalizedFilters.taskId ? entry.taskId === normalizedFilters.taskId : true))
       .sort((a, b) => b.entryDate.localeCompare(a.entryDate) || b.updatedAt.localeCompare(a.updatedAt));
   },
 
@@ -70,8 +72,8 @@ export const timeRepository = {
     await db.timeEntries.update(id, { deletedAt: now, updatedAt: now });
   },
 
-  async getBillableSummary(projectId?: string): Promise<BillableSummary> {
-    const entries = await this.listActive(projectId);
+  async getBillableSummary(filters?: string | TimeEntryFilters): Promise<BillableSummary> {
+    const entries = await this.listActive(filters);
     const billableEntries = entries.filter((entry) => entry.billable);
     const billableMinutes = billableEntries.reduce((sum, entry) => sum + entry.durationMinutes, 0);
     const billableAmount = billableEntries.reduce((sum, entry) => {

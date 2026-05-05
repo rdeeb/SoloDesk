@@ -2,6 +2,7 @@ import { db } from "@/db/db";
 import { seedDefaultKanbanStatuses } from "@/db/seed";
 import { settingsRepository } from "@/modules/settings/settings.repository";
 import type { SetupFormValues } from "@/modules/settings/settings.types";
+import { CurrencyCode, normalizeCurrency } from "@/shared/types/currency";
 
 export async function completeSetup(values: SetupFormValues) {
   const taxName = values.taxEnabled ? values.defaultTaxName.trim() : undefined;
@@ -10,7 +11,7 @@ export async function completeSetup(values: SetupFormValues) {
   await db.transaction("rw", db.settings, db.kanbanStatuses, async () => {
     await settingsRepository.save({
       workspaceName: values.workspaceName.trim(),
-      defaultCurrency: values.defaultCurrency.trim().toUpperCase(),
+      defaultCurrency: normalizeCurrency(values.defaultCurrency) ?? CurrencyCode.USD,
       defaultHourlyRate: values.defaultHourlyRate,
       taxEnabled: values.taxEnabled,
       defaultTaxName: taxName || undefined,

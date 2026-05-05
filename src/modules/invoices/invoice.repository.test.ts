@@ -4,12 +4,13 @@ import { clientRepository } from "@/modules/clients/client.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
 import { timeRepository } from "@/modules/time/time.repository";
 import { invoiceRepository } from "@/modules/invoices/invoice.repository";
+import { CurrencyCode } from "@/shared/types/currency";
 
 describe("invoiceRepository", () => {
   it("auto-generates invoice numbers and increments next number", async () => {
     await settingsRepository.save({
       workspaceName: "SoloDesk",
-      defaultCurrency: "USD",
+      defaultCurrency: CurrencyCode.USD,
       defaultHourlyRate: 100,
       taxEnabled: true,
       defaultTaxName: "VAT",
@@ -29,7 +30,7 @@ describe("invoiceRepository", () => {
       website: "",
       billingAddress: "",
       defaultHourlyRate: 120,
-      currency: "USD",
+      currency: CurrencyCode.USD,
       contractStatus: "active",
       notes: ""
     });
@@ -60,7 +61,7 @@ describe("invoiceRepository", () => {
       website: "",
       billingAddress: "",
       defaultHourlyRate: 80,
-      currency: "USD",
+      currency: CurrencyCode.USD,
       contractStatus: "active",
       notes: ""
     });
@@ -71,7 +72,7 @@ describe("invoiceRepository", () => {
       status: "active",
       hourlyRate: 150,
       budgetAmount: undefined,
-      currency: "USD",
+      currency: CurrencyCode.USD,
       startDate: "",
       dueDate: ""
     });

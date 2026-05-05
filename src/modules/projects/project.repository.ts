@@ -3,6 +3,7 @@ import { createId } from "@/shared/lib/id";
 import { textToEditorJson } from "@/shared/lib/editor-json";
 import type { Project } from "@/shared/types/domain";
 import type { ProjectFormValues } from "@/modules/projects/project.types";
+import { normalizeCurrency } from "@/shared/types/currency";
 
 function normalizeOptional(value: string) {
   const trimmed = value.trim();
@@ -38,7 +39,7 @@ export const projectRepository = {
       status: values.status,
       hourlyRate: values.hourlyRate,
       budgetAmount: values.budgetAmount,
-      currency: normalizeOptional(values.currency),
+      currency: normalizeCurrency(values.currency),
       startDate: normalizeOptional(values.startDate),
       dueDate: normalizeOptional(values.dueDate),
       createdAt: now,
@@ -63,9 +64,25 @@ export const projectRepository = {
       status: values.status,
       hourlyRate: values.hourlyRate,
       budgetAmount: values.budgetAmount,
-      currency: normalizeOptional(values.currency),
+      currency: normalizeCurrency(values.currency),
       startDate: normalizeOptional(values.startDate),
       dueDate: normalizeOptional(values.dueDate),
+      updatedAt: new Date().toISOString()
+    };
+
+    await db.projects.put(next);
+    return next;
+  },
+
+  async rename(id: string, name: string): Promise<Project | undefined> {
+    const existing = await db.projects.get(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const next: Project = {
+      ...existing,
+      name: name.trim(),
       updatedAt: new Date().toISOString()
     };
 

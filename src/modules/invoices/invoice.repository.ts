@@ -3,6 +3,7 @@ import { createId } from "@/shared/lib/id";
 import { invoiceLineItemRepository } from "@/modules/invoices/invoice-line-item.repository";
 import type { BillableTimeCandidate, InvoiceCreateValues, InvoiceWithItems } from "@/modules/invoices/invoice.types";
 import type { Invoice, InvoiceLineItem } from "@/shared/types/domain";
+import { CurrencyCode } from "@/shared/types/currency";
 
 function formatInvoiceNumber(prefix: string, sequence: number) {
   return `${prefix}-${String(sequence).padStart(4, "0")}`;
@@ -165,7 +166,7 @@ export const invoiceRepository = {
         status: values.status ?? "draft",
         issueDate: values.issueDate,
         dueDate: normalizeOptional(values.dueDate),
-        currency: values.currency ?? settings?.defaultCurrency ?? "USD",
+        currency: values.currency ?? settings?.defaultCurrency ?? CurrencyCode.USD,
         taxEnabled,
         taxName,
         taxRate,
@@ -182,7 +183,7 @@ export const invoiceRepository = {
       await db.settings.put({
         id: "workspace",
         workspaceName: settings?.workspaceName ?? "Workspace",
-        defaultCurrency: settings?.defaultCurrency ?? "USD",
+        defaultCurrency: settings?.defaultCurrency ?? CurrencyCode.USD,
         defaultHourlyRate: settings?.defaultHourlyRate,
         taxEnabled: settings?.taxEnabled ?? false,
         defaultTaxName: settings?.defaultTaxName,

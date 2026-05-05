@@ -90,4 +90,178 @@
   .ProseMirror hr {
     @apply my-4 border-border;
   }
+
+  .novel-editor .ProseMirror {
+    @apply min-h-[320px] pl-9 text-base leading-7 text-foreground;
+  }
+
+  .novel-editor .ProseMirror:focus {
+    @apply outline-none;
+  }
+
+  .novel-editor .ProseMirror > * {
+    @apply relative;
+  }
+
+  .novel-editor .ProseMirror p {
+    @apply my-1.5;
+  }
+
+  .novel-editor .ProseMirror h1 {
+    @apply mb-3 mt-5 text-3xl font-semibold leading-tight tracking-normal;
+  }
+
+  .novel-editor .ProseMirror h2 {
+    @apply mb-2.5 mt-4 text-2xl font-semibold leading-tight tracking-normal;
+  }
+
+  .novel-editor .ProseMirror h3 {
+    @apply mb-2 mt-3 text-xl font-semibold leading-snug tracking-normal;
+  }
+
+  .novel-editor .ProseMirror ul {
+    @apply my-2 list-disc pl-6;
+  }
+
+  .novel-editor .ProseMirror ol {
+    @apply my-2 list-decimal pl-6;
+  }
+
+  .novel-editor .ProseMirror li {
+    @apply my-1 pl-1;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] {
+    list-style: none !important;
+    padding-left: 0 !important;
+    margin: 0.5rem 0 !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] > li,
+  .novel-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+    margin: 0.25rem 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] > li > label,
+  .novel-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > label {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-shrink: 0 !important;
+    margin-top: calc(0.42rem + 5px) !important;
+    user-select: none !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] > li > label > span,
+  .novel-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > label > span {
+    display: none !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] > li > label input,
+  .novel-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > label input {
+    display: block !important;
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+    border-radius: 0.25rem !important;
+    cursor: pointer !important;
+    margin: 0 !important;
+    vertical-align: middle !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] > li > div,
+  .novel-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > p {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div > p {
+    text-decoration: line-through !important;
+    opacity: 0.7 !important;
+  }
+
+  .novel-editor .ProseMirror blockquote {
+    @apply my-3 border-l-2 border-border py-1 pl-4 text-muted-foreground;
+  }
+
+  .novel-editor .ProseMirror pre {
+    @apply my-3 overflow-x-auto rounded-md bg-muted p-3 font-mono text-sm leading-6;
+  }
+
+  .novel-editor .ProseMirror code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-sm;
+  }
+
+  .novel-editor .ProseMirror pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .novel-editor .ProseMirror hr {
+    @apply my-5 border-border;
+  }
+
+  .novel-editor .ProseMirror .is-editor-empty[data-placeholder]::before {
+    @apply pointer-events-none float-left h-0 text-muted-foreground/70;
+    content: attr(data-placeholder);
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"] [data-placeholder]::before {
+    content: none !important;
+  }
+
+  .novel-editor .ProseMirror ul[data-type="taskList"]::before,
+  .novel-editor .ProseMirror ul[data-type="taskList"][data-placeholder]::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .novel-editor .ProseMirror li > label + div .is-editor-empty[data-placeholder]::before {
+    content: none !important;
+  }
+
+  .novel-editor .ProseMirror-selectednode {
+    @apply rounded bg-accent/70 outline-none;
+  }
+
+  .novel-editor .drag-handle {
+    @apply rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-accent-foreground;
+    align-items: center;
+    cursor: grab;
+    display: flex;
+    height: 1.5rem;
+    justify-content: center;
+    padding: 0 0.125rem;
+    position: fixed;
+    width: 1.5rem;
+  }
+
+  .novel-editor .drag-handle svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .novel-editor .drag-handle.hide {
+    @apply opacity-0;
+  }
+
+  .novel-editor:hover .drag-handle:not(.hide),
+  .novel-editor .drag-handle:hover {
+    @apply opacity-100;
+  }
+
+  .novel-editor .drag-handle:active {
+    cursor: grabbing;
+  }
 }

@@ -1,4 +1,5 @@
 import type { Invoice, InvoiceLineItem, TimeEntry } from "@/shared/types/domain";
+import type { CurrencyCode } from "@/shared/types/currency";
 
 export interface ManualInvoiceLineItemInput {
   description: string;
@@ -11,7 +12,7 @@ export interface InvoiceCreateValues {
   projectId?: string;
   issueDate: string;
   dueDate?: string;
-  currency?: string;
+  currency?: CurrencyCode;
   taxEnabled?: boolean;
   taxName?: string;
   taxRate?: number;

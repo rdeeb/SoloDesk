@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db/db";
 import { taskRepository } from "@/modules/tasks/task.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
+import { CurrencyCode } from "@/shared/types/currency";
+import type { EditorJSON } from "@/shared/types/domain";
+import { EMPTY_EDITOR_JSON } from "@/shared/lib/editor-json";
 
 describe("taskRepository", () => {
   it("rejects task creation without a project", async () => {
@@ -9,7 +12,7 @@ describe("taskRepository", () => {
       taskRepository.create({
         projectId: "",
         title: "Draft proposal",
-        description: "",
+        description: EMPTY_EDITOR_JSON,
         statusId: "status-todo",
         priority: "medium",
         dueDate: "",
@@ -43,7 +46,7 @@ describe("taskRepository", () => {
       status: "active",
       hourlyRate: undefined,
       budgetAmount: undefined,
-      currency: "USD",
+      currency: CurrencyCode.USD,
       startDate: "",
       dueDate: ""
     });
@@ -51,7 +54,7 @@ describe("taskRepository", () => {
     const task = await taskRepository.create({
       projectId: project.id,
       title: "Draft proposal",
-      description: "Scope the first pass",
+      description: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Scope the first pass" }] }] },
       statusId: "status-todo",
       priority: "medium",
       dueDate: "",
@@ -67,5 +70,48 @@ describe("taskRepository", () => {
 
     await taskRepository.softDelete(task.id);
     expect(await taskRepository.listActive()).toEqual([]);
+  });
+
+  it("preserves rich editor JSON in task descriptions", async () => {
+    await db.kanbanStatuses.add({
+      id: "status-todo",
+      name: "To Do",
+      order: 0,
+      isDone: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    const project = await projectRepository.create({
+      name: "Website refresh",
+      clientId: undefined,
+      description: "",
+      status: "active",
+      hourlyRate: undefined,
+      budgetAmount: undefined,
+      currency: CurrencyCode.USD,
+      startDate: "",
+      dueDate: ""
+    });
+    const richDescription: EditorJSON = {
+      type: "doc",
+      content: [
+        { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Kickoff notes" }] },
+        { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Confirm scope" }] }] }] }
+      ]
+    };
+
+    const task = await taskRepository.create({
+      projectId: project.id,
+      title: "Draft proposal",
+      description: richDescription,
+      statusId: "status-todo",
+      priority: "medium",
+      dueDate: "",
+      estimateMinutes: 90,
+      billable: true
+    });
+
+    expect(task.description).toEqual(richDescription);
+    expect(taskRepository.toFormValues(task).description).toEqual(richDescription);
   });
 });

@@ -1,10 +1,11 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { clientRepository } from "@/modules/clients/client.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
 import { Button } from "@/shared/components/ui/button";
 
 export function ProjectsListPage() {
+  const navigate = useNavigate();
   const projects = useLiveQuery(() => projectRepository.listActive(), [], []);
   const clients = useLiveQuery(() => clientRepository.listActive(), [], []);
   const clientNameById = new Map(clients.map((client) => [client.id, client.name]));
@@ -16,9 +17,7 @@ export function ProjectsListPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Projects</h2>
           <p className="text-sm text-muted-foreground">Manage your projects and linked clients.</p>
         </div>
-        <Link to="/projects/new">
-          <Button>New project</Button>
-        </Link>
+        <Button onClick={() => navigate("/projects?drawer=new-project")}>New project</Button>
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
@@ -35,7 +34,7 @@ export function ProjectsListPage() {
             {projects.map((project) => (
               <tr key={project.id} className="border-t">
                 <td className="px-4 py-3">
-                  <Link to={`/projects/${project.id}`} className="font-medium hover:underline">
+                  <Link to={`/projects/${project.id}/tasks`} className="font-medium hover:underline">
                     {project.name}
                   </Link>
                 </td>

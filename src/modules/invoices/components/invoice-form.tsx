@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { clientRepository } from "@/modules/clients/client.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
@@ -6,6 +6,7 @@ import { invoiceRepository } from "@/modules/invoices/invoice.repository";
 import type { InvoiceCreateValues, ManualInvoiceLineItemInput } from "@/modules/invoices/invoice.types";
 import { settingsRepository } from "@/modules/settings/settings.repository";
 import { Button } from "@/shared/components/ui/button";
+import { CURRENCY_OPTIONS, type CurrencyCode } from "@/shared/types/currency";
 
 interface InvoiceFormProps {
   lockedProjectId?: string;
@@ -27,7 +28,7 @@ export function InvoiceForm({ lockedProjectId, lockedClientId, onSubmit }: Invoi
   const [projectId, setProjectId] = useState(lockedProjectId ?? "");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
-  const [currency, setCurrency] = useState("");
+  const [currency, setCurrency] = useState<CurrencyCode | "">("");
   const [taxEnabled, setTaxEnabled] = useState<boolean | undefined>(undefined);
   const [taxName, setTaxName] = useState("");
   const [taxRate, setTaxRate] = useState<number | undefined>(undefined);
@@ -45,6 +46,8 @@ export function InvoiceForm({ lockedProjectId, lockedClientId, onSubmit }: Invoi
     () => projects.filter((project) => !clientId || !project.clientId || project.clientId === clientId),
     [clientId, projects]
   );
+  const selectedClient = useMemo(() => clients.find((client) => client.id === clientId), [clientId, clients]);
+  const selectedProject = useMemo(() => projects.find((project) => project.id === projectId), [projectId, projects]);
   const timeCandidates = useLiveQuery(
     () => (clientId ? invoiceRepository.listBillableTimeCandidates(clientId, projectId || undefined) : Promise.resolve([])),
     [clientId, projectId],
@@ -54,6 +57,33 @@ export function InvoiceForm({ lockedProjectId, lockedClientId, onSubmit }: Invoi
   const estimatedSubtotal = sumManual(manualItems) + timeCandidates
     .filter((entry) => selectedTimeEntryIds.includes(entry.id))
     .reduce((sum, entry) => sum + (entry.durationMinutes / 60) * (entry.hourlyRate ?? 0), 0);
+
+  useEffect(() => {
+    if (!lockedProjectId || projectId || projects.length === 0) {
+      return;
+    }
+
+    const lockedProject = projects.find((project) => project.id === lockedProjectId);
+    if (!lockedProject) {
+      return;
+    }
+
+    setProjectId(lockedProject.id);
+    if (!lockedClientId && lockedProject.clientId) {
+      setClientId(lockedProject.clientId);
+    }
+  }, [lockedClientId, lockedProjectId, projectId, projects]);
+
+  useEffect(() => {
+    if (!settings) {
+      return;
+    }
+
+    setCurrency((prev) => prev || selectedProject?.currency || selectedClient?.currency || settings.defaultCurrency);
+    setTaxEnabled((prev) => prev ?? settings.taxEnabled);
+    setTaxName((prev) => prev || settings.defaultTaxName || "");
+    setTaxRate((prev) => prev ?? settings.defaultTaxRate);
+  }, [selectedClient?.currency, selectedProject?.currency, settings]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,6 +126,8 @@ export function InvoiceForm({ lockedProjectId, lockedClientId, onSubmit }: Invoi
           disabled={Boolean(lockedClientId)}
           onChange={(event) => {
             setClientId(event.target.value);
+            const nextClient = clients.find((client) => client.id === event.target.value);
+            setCurrency(nextClient?.currency ?? settings?.defaultCurrency ?? "");
             if (!lockedProjectId) {
               setProjectId("");
             }
@@ -112,7 +144,11 @@ export function InvoiceForm({ lockedProjectId, lockedClientId, onSubmit }: Invoi
         <select
           value={projectId}
           disabled={Boolean(lockedProjectId)}
-          onChange={(event) => setProjectId(event.target.value)}
+          onChange={(event) => {
+            setProjectId(event.target.value);
+            const nextProject = projects.find((project) => project.id === event.target.value);
+            setCurrency(nextProject?.currency ?? selectedClient?.currency ?? settings?.defaultCurrency ?? "");
+          }}
           className="rounded-md border bg-background px-3 py-2 text-sm"
         >
           <option value="">No project</option>
@@ -137,7 +173,18 @@ export function InvoiceForm({ lockedProjectId, lockedClientId, onSubmit }: Invoi
       <div className="grid gap-3 md:grid-cols-4">
         <input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm" />
         <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm" />
-        <input value={currency} placeholder={settings?.defaultCurrency ?? "USD"} onChange={(event) => setCurrency(event.target.value.toUpperCase())} className="rounded-md border bg-background px-3 py-2 text-sm uppercase" />
+        <select
+          value={currency}
+          onChange={(event) => setCurrency(event.target.value as CurrencyCode | "")}
+          className="rounded-md border bg-background px-3 py-2 text-sm"
+        >
+          <option value="">{settings?.defaultCurrency ? `Workspace default (${settings.defaultCurrency})` : "Workspace default"}</option>
+          {CURRENCY_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
         <input type="number" min={0} step={0.01} value={discountTotal ?? ""} onChange={(event) => setDiscountTotal(event.target.value ? Number(event.target.value) : undefined)} placeholder="Discount" className="rounded-md border bg-background px-3 py-2 text-sm" />
       </div>
 

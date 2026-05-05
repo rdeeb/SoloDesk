@@ -9,7 +9,7 @@ import type { KanbanStatus, Task } from "@/shared/types/domain";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 
-function BoardTaskCard({ task }: { task: Task }) {
+function BoardTaskCard({ task, projectId }: { task: Task; projectId: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id
   });
@@ -30,14 +30,14 @@ function BoardTaskCard({ task }: { task: Task }) {
         <span>{task.priority ?? "no priority"}</span>
         <span>{task.dueDate ?? ""}</span>
       </div>
-      <Link to={`/tasks/${task.id}/edit`} className="mt-2 block text-xs font-medium underline">
-        Edit
+      <Link to={`/projects/${projectId}/tasks?taskId=${task.id}`} className="mt-2 block text-xs font-medium underline">
+        Open
       </Link>
     </article>
   );
 }
 
-function BoardColumn({ status, tasks }: { status: KanbanStatus; tasks: Task[] }) {
+function BoardColumn({ status, tasks, projectId }: { status: KanbanStatus; tasks: Task[]; projectId: string }) {
   const { setNodeRef, isOver } = useDroppable({
     id: status.id
   });
@@ -59,7 +59,7 @@ function BoardColumn({ status, tasks }: { status: KanbanStatus; tasks: Task[] })
       </header>
       <div className="flex flex-1 flex-col gap-2 p-2">
         {tasks.map((task) => (
-          <BoardTaskCard key={task.id} task={task} />
+          <BoardTaskCard key={task.id} task={task} projectId={projectId} />
         ))}
       </div>
     </section>
@@ -125,7 +125,7 @@ export function ProjectBoardPage() {
           <h2 className="text-2xl font-semibold tracking-tight">{project.name} Board</h2>
           <p className="text-sm text-muted-foreground">Global Kanban statuses, filtered to this project.</p>
         </div>
-        <Link to={`/projects/${project.id}/tasks/new`}>
+        <Link to={`/projects/${project.id}/tasks?drawer=new-task`}>
           <Button>New task</Button>
         </Link>
       </div>
@@ -137,6 +137,7 @@ export function ProjectBoardPage() {
               key={status.id}
               status={status}
               tasks={tasks.filter((task) => task.statusId === status.id)}
+              projectId={project.id}
             />
           ))}
         </div>

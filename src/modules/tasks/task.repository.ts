@@ -1,6 +1,6 @@
 import { db } from "@/db/db";
 import { createId } from "@/shared/lib/id";
-import { editorJsonToText, textToEditorJson } from "@/shared/lib/editor-json";
+import { EMPTY_EDITOR_JSON, normalizeEditorJson } from "@/shared/lib/editor-json";
 import type { KanbanStatus, Task } from "@/shared/types/domain";
 import type { TaskFilters, TaskFormValues } from "@/modules/tasks/task.types";
 
@@ -87,7 +87,7 @@ export const taskRepository = {
       id: createId("task"),
       projectId: values.projectId,
       title: values.title.trim(),
-      description: textToEditorJson(values.description),
+      description: normalizeEditorJson(values.description ?? EMPTY_EDITOR_JSON),
       statusId: values.statusId,
       priority: values.priority,
       dueDate: normalizeOptional(values.dueDate),
@@ -115,7 +115,7 @@ export const taskRepository = {
       ...existing,
       projectId: values.projectId,
       title: values.title.trim(),
-      description: textToEditorJson(values.description),
+      description: normalizeEditorJson(values.description ?? EMPTY_EDITOR_JSON),
       statusId: values.statusId,
       priority: values.priority,
       dueDate: normalizeOptional(values.dueDate),
@@ -149,7 +149,7 @@ export const taskRepository = {
     return {
       projectId: task.projectId,
       title: task.title,
-      description: editorJsonToText(task.description),
+      description: task.description ?? EMPTY_EDITOR_JSON,
       statusId: task.statusId,
       priority: task.priority,
       dueDate: task.dueDate ?? "",

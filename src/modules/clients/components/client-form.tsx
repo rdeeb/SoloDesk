@@ -1,6 +1,9 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { Button } from "@/shared/components/ui/button";
 import { CLIENT_FORM_DEFAULTS, type ClientFormValues } from "@/modules/clients/client.types";
+import { settingsRepository } from "@/modules/settings/settings.repository";
+import { CURRENCY_OPTIONS, type CurrencyCode } from "@/shared/types/currency";
 
 interface ClientFormProps {
   initialValues?: ClientFormValues;
@@ -10,12 +13,26 @@ interface ClientFormProps {
 
 const CONTRACT_STATUSES = ["lead", "active", "paused", "completed", "lost"] as const;
 
-export function ClientForm({ initialValues = CLIENT_FORM_DEFAULTS, submitLabel, onSubmit }: ClientFormProps) {
-  const [values, setValues] = useState<ClientFormValues>(initialValues);
+export function ClientForm({ initialValues, submitLabel, onSubmit }: ClientFormProps) {
+  const settings = useLiveQuery(() => settingsRepository.get(), [], null);
+  const isCreateMode = initialValues === undefined;
+  const [values, setValues] = useState<ClientFormValues>(initialValues ?? CLIENT_FORM_DEFAULTS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(() => values.name.trim().length > 0, [values.name]);
+
+  useEffect(() => {
+    if (!isCreateMode || !settings) {
+      return;
+    }
+
+    setValues((prev) => ({
+      ...prev,
+      defaultHourlyRate: prev.defaultHourlyRate ?? settings.defaultHourlyRate,
+      currency: prev.currency || settings.defaultCurrency
+    }));
+  }, [isCreateMode, settings]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,12 +131,18 @@ export function ClientForm({ initialValues = CLIENT_FORM_DEFAULTS, submitLabel, 
 
         <label className="space-y-1">
           <span className="text-sm font-medium">Currency</span>
-          <input
+          <select
             value={values.currency}
-            onChange={(event) => setValues((prev) => ({ ...prev, currency: event.target.value.toUpperCase() }))}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm uppercase"
-            maxLength={3}
-          />
+            onChange={(event) => setValues((prev) => ({ ...prev, currency: event.target.value as CurrencyCode | "" }))}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Workspace default</option>
+            {CURRENCY_OPTIONS.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="space-y-1">

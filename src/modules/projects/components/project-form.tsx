@@ -1,7 +1,14 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { Plus } from "lucide-react";
 import type { Client } from "@/shared/types/domain";
 import { Button } from "@/shared/components/ui/button";
+import { Drawer } from "@/shared/components/ui/drawer";
+import { ClientForm } from "@/modules/clients/components/client-form";
+import { clientRepository } from "@/modules/clients/client.repository";
 import { PROJECT_FORM_DEFAULTS, type ProjectFormValues } from "@/modules/projects/project.types";
+import { settingsRepository } from "@/modules/settings/settings.repository";
+import { CURRENCY_OPTIONS, type CurrencyCode } from "@/shared/types/currency";
 
 interface ProjectFormProps {
   clients: Client[];
@@ -12,12 +19,37 @@ interface ProjectFormProps {
 
 const PROJECT_STATUSES = ["active", "paused", "completed", "archived"] as const;
 
-export function ProjectForm({ clients, initialValues = PROJECT_FORM_DEFAULTS, submitLabel, onSubmit }: ProjectFormProps) {
-  const [values, setValues] = useState<ProjectFormValues>(initialValues);
+export function ProjectForm({ clients, initialValues, submitLabel, onSubmit }: ProjectFormProps) {
+  const settings = useLiveQuery(() => settingsRepository.get(), [], null);
+  const isCreateMode = initialValues === undefined;
+  const [values, setValues] = useState<ProjectFormValues>(initialValues ?? PROJECT_FORM_DEFAULTS);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClientDrawerOpen, setIsClientDrawerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isValid = useMemo(() => values.name.trim().length > 0, [values.name]);
+
+  useEffect(() => {
+    if (!isCreateMode || !settings) {
+      return;
+    }
+
+    setValues((prev) => ({
+      ...prev,
+      hourlyRate: prev.hourlyRate ?? settings.defaultHourlyRate,
+      currency: prev.currency || settings.defaultCurrency
+    }));
+  }, [isCreateMode, settings]);
+
+  function applyClientDefaults(clientId: string | undefined) {
+    const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
+    setValues((prev) => ({
+      ...prev,
+      clientId,
+      hourlyRate: client?.defaultHourlyRate ?? settings?.defaultHourlyRate ?? prev.hourlyRate,
+      currency: client?.currency ?? settings?.defaultCurrency ?? prev.currency
+    }));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,20 +85,30 @@ export function ProjectForm({ clients, initialValues = PROJECT_FORM_DEFAULTS, su
 
         <label className="space-y-1">
           <span className="text-sm font-medium">Client (optional)</span>
-          <select
-            value={values.clientId ?? ""}
-            onChange={(event) =>
-              setValues((prev) => ({ ...prev, clientId: event.target.value ? event.target.value : undefined }))
-            }
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">No client</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
+          <span className="flex gap-2">
+            <select
+              value={values.clientId ?? ""}
+              onChange={(event) => applyClientDefaults(event.target.value ? event.target.value : undefined)}
+              className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">No client</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label="Create client"
+              onClick={() => setIsClientDrawerOpen(true)}
+              className="h-9 w-9 px-0"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </span>
         </label>
 
         <label className="space-y-1">
@@ -88,12 +130,18 @@ export function ProjectForm({ clients, initialValues = PROJECT_FORM_DEFAULTS, su
 
         <label className="space-y-1">
           <span className="text-sm font-medium">Currency</span>
-          <input
+          <select
             value={values.currency}
-            onChange={(event) => setValues((prev) => ({ ...prev, currency: event.target.value.toUpperCase() }))}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm uppercase"
-            maxLength={3}
-          />
+            onChange={(event) => setValues((prev) => ({ ...prev, currency: event.target.value as CurrencyCode | "" }))}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Workspace default</option>
+            {CURRENCY_OPTIONS.map((currency) => (
+              <option key={currency} value={currency}>
+                {currency}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="space-y-1">
@@ -165,6 +213,28 @@ export function ProjectForm({ clients, initialValues = PROJECT_FORM_DEFAULTS, su
       <Button type="submit" disabled={isSubmitting || !isValid}>
         {isSubmitting ? "Saving..." : submitLabel}
       </Button>
+
+      <Drawer
+        open={isClientDrawerOpen}
+        title="Create client"
+        description="Add the client and attach it to this project."
+        level={1}
+        onClose={() => setIsClientDrawerOpen(false)}
+      >
+        <ClientForm
+          submitLabel="Create client"
+          onSubmit={async (clientValues) => {
+            const created = await clientRepository.create(clientValues);
+            setValues((prev) => ({
+              ...prev,
+              clientId: created.id,
+              hourlyRate: created.defaultHourlyRate ?? settings?.defaultHourlyRate ?? prev.hourlyRate,
+              currency: created.currency ?? settings?.defaultCurrency ?? prev.currency
+            }));
+            setIsClientDrawerOpen(false);
+          }}
+        />
+      </Drawer>
     </form>
   );
 }
