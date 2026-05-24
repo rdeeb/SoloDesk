@@ -4,6 +4,7 @@ import type { CurrencyCode } from "@/shared/types/currency";
 export interface ProjectFormValues {
   clientId?: string;
   name: string;
+  glyph: string;
   description: string;
   status: Project["status"];
   hourlyRate?: number;
@@ -16,6 +17,7 @@ export interface ProjectFormValues {
 export const PROJECT_FORM_DEFAULTS: ProjectFormValues = {
   clientId: undefined,
   name: "",
+  glyph: "",
   description: "",
   status: "active",
   hourlyRate: undefined,

@@ -40,6 +40,7 @@ export interface Project {
   id: string;
   clientId?: string;
   name: string;
+  glyph?: string;
   description?: EditorJSON;
   status: "active" | "paused" | "completed" | "archived";
   hourlyRate?: number;

@@ -1,77 +1,60 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
 
 interface DrawerProps {
   open: boolean;
   title: string;
   description?: string;
   children: ReactNode;
+  footer?: ReactNode;
   onClose: () => void;
-  className?: string;
   level?: number;
 }
 
-export function Drawer({ open, title, description, children, onClose, className, level = 0 }: DrawerProps) {
+export function Drawer({ open, title, description, children, footer, onClose, level = 0 }: DrawerProps) {
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-
+    if (!open) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
+      if (event.key !== "Escape") return;
+      if (level === 0 && document.querySelector(".sd-drawer.level-1")) return;
+      onClose();
     }
-
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, open]);
+  }, [onClose, open, level]);
 
-  if (!open) {
-    return null;
-  }
-
-  const zIndex = 50 + level * 10;
+  if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0" style={{ zIndex }} role="presentation">
-      <button
-        type="button"
-        aria-label="Close drawer"
-        className="absolute inset-0 bg-background/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`drawer-title-${level}`}
-        className={cn(
-          "absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col border-l bg-background shadow-2xl",
-          level > 0 && "max-w-xl",
-          className
-        )}
-      >
-        <header className="flex items-start justify-between gap-4 border-b px-5 py-4">
-          <div>
-            <h2 id={`drawer-title-${level}`} className="text-lg font-semibold tracking-tight">
-              {title}
-            </h2>
-            {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+    <>
+      {level === 0 && (
+        <div className="sd-drawer-backdrop" onClick={onClose} role="presentation" />
+      )}
+      <div className={`sd-drawer${level > 0 ? " level-1" : ""}`} role="dialog" aria-modal="true">
+        <div className="sd-drawer-head">
+          <div className="sd-drawer-glyph outline" aria-hidden="true">
+            {title.substring(0, 2).toUpperCase()}
           </div>
-          <button
-            type="button"
-            aria-label="Close drawer"
-            onClick={onClose}
-            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
+          <div className="sd-drawer-meta">
+            <div className="sd-drawer-ttl">{title}</div>
+            {description && <div className="sd-drawer-sub">{description}</div>}
+          </div>
+          <button className="sd-drawer-close" onClick={onClose} aria-label="Close drawer">
+            <X size={16} />
           </button>
-        </header>
-        <div className="flex-1 overflow-y-auto p-5">{children}</div>
-      </section>
-    </div>,
+        </div>
+
+        <div className="sd-drawer-body">{children}</div>
+
+        {footer && (
+          <div className="sd-drawer-foot">
+            <div className="left" />
+            <div className="right">{footer}</div>
+          </div>
+        )}
+      </div>
+    </>,
     document.body
   );
 }
