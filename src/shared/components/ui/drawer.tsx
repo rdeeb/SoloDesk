@@ -10,6 +10,7 @@ interface DrawerProps {
   footer?: ReactNode;
   onClose: () => void;
   level?: number;
+  className?: string;
 }
 
 export function Drawer({ open, title, description, children, footer, onClose, level = 0 }: DrawerProps) {

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Check, Clock, FileText, Flag, Receipt, CheckSquare, ChevronRight } from "lucide-react";
 import { db } from "@/db/db";
+import type { Task } from "@/shared/types/domain";
 import { clientRepository } from "@/modules/clients/client.repository";
 import { docsRepository } from "@/modules/docs/docs.repository";
 import { kanbanRepository } from "@/modules/kanban/kanban.repository";
@@ -79,7 +80,7 @@ export function ProjectDetailPage() {
   const tasks = useLiveQuery(
     () => projectId
       ? db.tasks.where("projectId").equals(projectId).filter((t) => !t.deletedAt).toArray()
-      : Promise.resolve([]),
+      : Promise.resolve([] as Task[]),
     [projectId],
     []
   );

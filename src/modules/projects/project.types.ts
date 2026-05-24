@@ -4,7 +4,7 @@ import type { CurrencyCode } from "@/shared/types/currency";
 export interface ProjectFormValues {
   clientId?: string;
   name: string;
-  glyph: string;
+  glyph?: string;
   description: string;
   status: Project["status"];
   hourlyRate?: number;
