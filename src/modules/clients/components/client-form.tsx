@@ -6,6 +6,7 @@ import { settingsRepository } from "@/modules/settings/settings.repository";
 import { CURRENCY_OPTIONS, type CurrencyCode } from "@/shared/types/currency";
 
 interface ClientFormProps {
+  formId?: string;
   initialValues?: ClientFormValues;
   submitLabel: string;
   onSubmit: (values: ClientFormValues) => Promise<void>;
@@ -13,7 +14,7 @@ interface ClientFormProps {
 
 const CONTRACT_STATUSES = ["lead", "active", "paused", "completed", "lost"] as const;
 
-export function ClientForm({ initialValues, submitLabel, onSubmit }: ClientFormProps) {
+export function ClientForm({ formId = "client-form", initialValues, submitLabel, onSubmit }: ClientFormProps) {
   const settings = useLiveQuery(() => settingsRepository.get(), [], null);
   const isCreateMode = initialValues === undefined;
   const [values, setValues] = useState<ClientFormValues>(initialValues ?? CLIENT_FORM_DEFAULTS);
@@ -54,7 +55,7 @@ export function ClientForm({ initialValues, submitLabel, onSubmit }: ClientFormP
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1">
           <span className="text-sm font-medium">Name *</span>
@@ -187,11 +188,13 @@ export function ClientForm({ initialValues, submitLabel, onSubmit }: ClientFormP
 
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isSubmitting || !isValid}>
-          {isSubmitting ? "Saving..." : submitLabel}
-        </Button>
-      </div>
+      {formId === "client-form" && (
+        <div className="flex gap-2">
+          <Button type="submit" disabled={isSubmitting || !isValid}>
+            {isSubmitting ? "Saving..." : submitLabel}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

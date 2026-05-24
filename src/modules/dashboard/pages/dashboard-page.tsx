@@ -1,188 +1,395 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useNavigate } from "react-router-dom";
+import {
+  Briefcase,
+  Check,
+  CheckSquare,
+  Clock,
+  FileText,
+  Flag,
+  Receipt,
+} from "lucide-react";
 import { db } from "@/db/db";
-import { docsRepository } from "@/modules/docs/docs.repository";
-import { invoiceRepository } from "@/modules/invoices/invoice.repository";
 import { kanbanRepository } from "@/modules/kanban/kanban.repository";
 import { projectRepository } from "@/modules/projects/project.repository";
 import { settingsRepository } from "@/modules/settings/settings.repository";
 import { timeRepository } from "@/modules/time/time.repository";
+import { invoiceRepository } from "@/modules/invoices/invoice.repository";
+import { docsRepository } from "@/modules/docs/docs.repository";
+
+function fmtDate(dateStr: string | undefined): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function fmtMoney(amount: number, currency = "USD"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function fmtHours(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (m === 0) return `${h}`;
+  return `${h}.${String(Math.round((m / 60) * 10)).padStart(1, "0")}`;
+}
+
+function isOverdue(dateStr: string | undefined): boolean {
+  if (!dateStr) return false;
+  return dateStr < new Date().toISOString().split("T")[0];
+}
+
+function isThisWeek(dateStr: string): boolean {
+  const d = new Date(dateStr + "T00:00:00");
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay());
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return d >= start && d < end;
+}
+
+function projectInitials(name: string, glyph?: string): string {
+  if (glyph) return glyph;
+  const clean = name.replace(/[·→\-–]/g, " ").trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function KpiCard({
+  label,
+  icon: Icon,
+  value,
+  unit,
+  delta,
+}: {
+  label: string;
+  icon: React.ComponentType<{ size?: number }>;
+  value: string | number;
+  unit?: string;
+  delta: React.ReactNode;
+}) {
+  return (
+    <div className="sd-kpi">
+      <div className="sd-kpi-label">
+        <Icon size={13} />
+        {label}
+      </div>
+      <div className="sd-kpi-value">
+        {value}
+        {unit && <span className="unit">{unit}</span>}
+      </div>
+      <div className="sd-kpi-delta">{delta}</div>
+    </div>
+  );
+}
 
 export function DashboardPage() {
-  const [clientFilter, setClientFilter] = useState("");
-  const [projectFilter, setProjectFilter] = useState("");
-  const [taskStatusFilter, setTaskStatusFilter] = useState("");
-  const [billableOnly, setBillableOnly] = useState(false);
-  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("");
+  const navigate = useNavigate();
 
-  const clients = useLiveQuery(() => db.clients.toCollection().filter((client) => !client.deletedAt).toArray(), [], []);
+  const settings = useLiveQuery(() => settingsRepository.get(), [], null);
   const projects = useLiveQuery(() => projectRepository.listActive(), [], []);
   const statuses = useLiveQuery(() => kanbanRepository.listActive(), [], []);
-  const tasks = useLiveQuery(() => db.tasks.toCollection().filter((task) => !task.deletedAt).toArray(), [], []);
+  const tasks = useLiveQuery(() => db.tasks.toCollection().filter((t) => !t.deletedAt).toArray(), [], []);
   const timeEntries = useLiveQuery(() => timeRepository.listActive(), [], []);
-  const recentDocs = useLiveQuery(() => docsRepository.listRecent(3), [], []);
   const invoices = useLiveQuery(() => invoiceRepository.listActive(), [], []);
-  const settings = useLiveQuery(() => settingsRepository.get(), [], null);
+  const recentDocs = useLiveQuery(() => docsRepository.listRecent(4), [], []);
 
-  const statusById = useMemo(() => new Map(statuses.map((status) => [status.id, status])), [statuses]);
-  const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
-  const projectClientById = useMemo(
-    () => new Map(projects.map((project) => [project.id, project.clientId])),
-    [projects]
+  const doneStatusIds = useMemo(
+    () => new Set(statuses.filter((s) => s.isDone).map((s) => s.id)),
+    [statuses]
+  );
+  const projectById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
+
+  const activeProjects = projects.filter((p) => p.status === "active");
+  const openTasks = tasks.filter((t) => !doneStatusIds.has(t.statusId));
+  const overdueTasks = openTasks.filter((t) => isOverdue(t.dueDate));
+
+  const weekMinutes = useMemo(
+    () => timeEntries.filter((e) => isThisWeek(e.entryDate)).reduce((s, e) => s + e.durationMinutes, 0),
+    [timeEntries]
+  );
+  const billableWeekMinutes = useMemo(
+    () => timeEntries.filter((e) => isThisWeek(e.entryDate) && e.billable).reduce((s, e) => s + e.durationMinutes, 0),
+    [timeEntries]
   );
 
-  const filteredProjects = projects.filter((project) => {
-    if (projectFilter && project.id !== projectFilter) return false;
-    if (clientFilter && project.clientId !== clientFilter) return false;
-    return true;
-  });
+  const draftInvoices = invoices.filter((i) => i.status === "draft");
+  const unbilledTotal = draftInvoices.reduce((s, i) => s + i.total, 0);
 
-  const filteredTasks = tasks.filter((task) => {
-    if (projectFilter && task.projectId !== projectFilter) return false;
-    const projectClientId = projectClientById.get(task.projectId);
-    if (clientFilter && projectClientId !== clientFilter) return false;
-    if (taskStatusFilter && task.statusId !== taskStatusFilter) return false;
-    return true;
-  });
+  const currency = settings?.defaultCurrency ?? "USD";
+  const workspaceName = settings?.workspaceName ?? "Your workspace";
 
-  const filteredTime = timeEntries.filter((entry) => {
-    if (projectFilter && entry.projectId !== projectFilter) return false;
-    const projectClientId = projectClientById.get(entry.projectId);
-    if (clientFilter && projectClientId !== clientFilter) return false;
-    if (billableOnly && !entry.billable) return false;
-    return true;
-  });
+  // Progress per project (done/total)
+  const projectProgress = useMemo(() => {
+    const map = new Map<string, { done: number; total: number; open: number }>();
+    for (const p of projects) map.set(p.id, { done: 0, total: 0, open: 0 });
+    for (const t of tasks) {
+      const entry = map.get(t.projectId);
+      if (!entry) continue;
+      entry.total++;
+      if (doneStatusIds.has(t.statusId)) entry.done++;
+      else entry.open++;
+    }
+    return map;
+  }, [projects, tasks, doneStatusIds]);
 
-  const filteredInvoices = invoices.filter((invoice) => {
-    if (projectFilter && invoice.projectId !== projectFilter) return false;
-    if (clientFilter && invoice.clientId !== clientFilter) return false;
-    if (invoiceStatusFilter && invoice.status !== invoiceStatusFilter) return false;
-    return true;
-  });
-
-  const billableSummary = filteredTime.reduce(
-    (acc, entry) => {
-      if (!entry.billable) return acc;
-      acc.billableMinutes += entry.durationMinutes;
-      if (entry.hourlyRate !== undefined) {
-        acc.billableAmount += (entry.durationMinutes / 60) * entry.hourlyRate;
-      }
-      return acc;
-    },
-    { billableMinutes: 0, billableAmount: 0 }
-  );
-
-  const openTasks = filteredTasks.filter((task) => !statusById.get(task.statusId)?.isDone).length;
-  const completedTasks = filteredTasks.filter((task) => statusById.get(task.statusId)?.isDone).length;
-  const activeClients = clients.filter((client) =>
-    filteredProjects.some((project) => project.clientId === client.id)
-  ).length;
-  const activeProjects = filteredProjects.filter((project) => project.status === "active").length;
-
-  const billableHours = (billableSummary.billableMinutes / 60).toFixed(2);
-  const billableAmount = billableSummary.billableAmount.toLocaleString("en-US", {
-    style: "currency",
-    currency: projectById.get(projectFilter)?.currency ?? settings?.defaultCurrency ?? "USD",
-    maximumFractionDigits: 2
-  });
-  const draftInvoices = filteredInvoices.filter((invoice) => invoice.status === "draft").length;
-  const unpaidInvoices = filteredInvoices.filter((invoice) => invoice.status === "sent").length;
+  const now = new Date();
+  const dayName = now.toLocaleDateString("en-US", { weekday: "long" });
+  const dateLabel = now.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  const firstName = workspaceName.split(/\s|·/)[0];
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Your SoloDesk workspace is ready.</p>
+    <div className="sd-page wide">
+      {/* Page head */}
+      <div className="sd-page-head">
+        <div className="sd-page-emoji outline" style={{ fontSize: 22 }}>◆</div>
+        <div>
+          <h1 className="sd-page-title">Good morning, {firstName}</h1>
+          <div className="sd-page-subtitle">
+            <span>
+              <span className="mono">{dayName}, {dateLabel}</span>
+              {" · "}
+              {activeProjects.length} active projects
+              {" · "}
+              {openTasks.length} open tasks
+            </span>
+          </div>
+        </div>
       </div>
 
-      <section className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-5">
-        <select value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm">
-          <option value="">All clients</option>
-          {clients.map((client) => (
-            <option key={client.id} value={client.id}>
-              {client.name}
-            </option>
-          ))}
-        </select>
-        <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm">
-          <option value="">All projects</option>
-          {projects
-            .filter((project) => !clientFilter || project.clientId === clientFilter)
-            .map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-        </select>
-        <select value={taskStatusFilter} onChange={(event) => setTaskStatusFilter(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm">
-          <option value="">All task statuses</option>
-          {statuses.map((status) => (
-            <option key={status.id} value={status.id}>
-              {status.name}
-            </option>
-          ))}
-        </select>
-        <select value={invoiceStatusFilter} onChange={(event) => setInvoiceStatusFilter(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm">
-          <option value="">All invoice statuses</option>
-          <option value="draft">draft</option>
-          <option value="sent">sent</option>
-          <option value="paid">paid</option>
-          <option value="void">void</option>
-        </select>
-        <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
-          <input type="checkbox" checked={billableOnly} onChange={(event) => setBillableOnly(event.target.checked)} />
-          Billable only
-        </label>
-      </section>
+      {/* KPI row */}
+      <div className="sd-kpis">
+        <KpiCard
+          label="Active projects"
+          icon={Briefcase}
+          value={activeProjects.length}
+          delta={<>{projects.length} total</>}
+        />
+        <KpiCard
+          label="Open tasks"
+          icon={CheckSquare}
+          value={openTasks.length}
+          delta={<><span className="num">{overdueTasks.length}</span> overdue</>}
+        />
+        <KpiCard
+          label="Logged · this week"
+          icon={Clock}
+          value={fmtHours(weekMinutes)}
+          unit="h"
+          delta={<><span className="num">{fmtHours(billableWeekMinutes)}h</span> billable</>}
+        />
+        <KpiCard
+          label="Unbilled"
+          icon={Receipt}
+          value={fmtMoney(unbilledTotal, currency)}
+          delta={<>across <span className="num">{draftInvoices.length}</span> draft invoices</>}
+        />
+      </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Active Clients</p>
-          <p className="mt-2 text-2xl font-semibold">{activeClients}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Active Projects</p>
-          <p className="mt-2 text-2xl font-semibold">{activeProjects}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Open Tasks</p>
-          <p className="mt-2 text-2xl font-semibold">{openTasks}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Completed Tasks</p>
-          <p className="mt-2 text-2xl font-semibold">{completedTasks}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Billable Hours</p>
-          <p className="mt-2 text-2xl font-semibold">{billableHours}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Unbilled Amount</p>
-          <p className="mt-2 text-2xl font-semibold">{billableAmount}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Draft Invoices</p>
-          <p className="mt-2 text-2xl font-semibold">{draftInvoices}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Unpaid Invoices</p>
-          <p className="mt-2 text-2xl font-semibold">{unpaidInvoices}</p>
-        </article>
-        <article className="rounded-lg border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Recent Docs</p>
-          {recentDocs.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">-</p>
-          ) : (
-            <ul className="mt-2 space-y-1 text-sm">
-              {recentDocs.map((doc) => (
-                <li key={doc.id} className="truncate">
-                  {doc.title}
-                </li>
-              ))}
-            </ul>
+      {/* Main split */}
+      <div className="sd-split">
+        {/* Left column */}
+        <div>
+          <div className="sd-section-title">
+            Today
+            <div className="right">
+              <span className="mono" style={{ color: "var(--fg-muted)", fontSize: 12 }}>{openTasks.length} items</span>
+            </div>
+          </div>
+
+          <div className="sd-tbl">
+            <div className="sd-tbl-head" style={{ gridTemplateColumns: "22px 1fr 130px 110px 76px" }}>
+              <div />
+              <div>Task</div>
+              <div>Project</div>
+              <div>Status</div>
+              <div style={{ textAlign: "right" }}>Due</div>
+            </div>
+            {openTasks.slice(0, 7).map((task) => {
+              const project = projectById.get(task.projectId);
+              const status = statuses.find((s) => s.id === task.statusId);
+              const overdue = isOverdue(task.dueDate);
+              const initials = project ? projectInitials(project.name, project.glyph) : "?";
+              return (
+                <div
+                  key={task.id}
+                  className="sd-tbl-row"
+                  style={{ gridTemplateColumns: "22px 1fr 130px 110px 76px" }}
+                  onClick={() => project && navigate(`/projects/${project.id}/tasks`)}
+                >
+                  <button className="sd-task-check" type="button" onClick={(e) => e.stopPropagation()}>
+                    <Check size={9} />
+                  </button>
+                  <div className="ttl">{task.title}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                    <span style={{
+                      width: 14, height: 14, borderRadius: 3,
+                      background: "#0e0e10", color: "#fff",
+                      display: "inline-grid", placeItems: "center",
+                      fontWeight: 700, fontSize: 8, flexShrink: 0,
+                    }}>
+                      {initials.charAt(0)}
+                    </span>
+                    <span className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {project?.name.split(/[·→]/).pop()?.trim() ?? "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="sd-status-chip">
+                      <span className="sd-status-dot" style={{ background: "#6c6c70" }} />
+                      {status?.name ?? "—"}
+                    </span>
+                  </div>
+                  <div
+                    className="num"
+                    style={{
+                      textAlign: "right",
+                      color: overdue ? "#0e0e10" : "var(--fg-muted)",
+                      fontWeight: overdue ? 600 : 400,
+                    }}
+                  >
+                    {fmtDate(task.dueDate)}
+                  </div>
+                </div>
+              );
+            })}
+            {openTasks.length === 0 && (
+              <div style={{ padding: "24px 14px", textAlign: "center", color: "var(--fg-muted)", fontSize: 13 }}>
+                No open tasks
+              </div>
+            )}
+          </div>
+
+          <div className="sd-section-title" style={{ marginTop: 28 }}>Active projects</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {activeProjects.slice(0, 6).map((project) => {
+              const prog = projectProgress.get(project.id) ?? { done: 0, total: 0, open: 0 };
+              const pct = prog.total > 0 ? prog.done / prog.total : 0;
+              const glyph = projectInitials(project.name, project.glyph);
+              return (
+                <div
+                  key={project.id}
+                  className="sd-proj-card"
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div className="sd-proj-glyph">{glyph}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {project.name.split(/[·→]/).pop()?.trim() || project.name}
+                      </div>
+                    </div>
+                    <span className="mono" style={{ fontSize: 11.5, color: "var(--fg-muted)", flexShrink: 0 }}>
+                      {prog.open} open
+                    </span>
+                  </div>
+                  <div>
+                    <div className="sd-progress-bar" style={{ marginBottom: 6 }}>
+                      <div className="sd-progress-fill" style={{ width: `${Math.round(pct * 100)}%` }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--fg-muted)" }}>
+                      <span><span className="mono">{Math.round(pct * 100)}%</span> complete</span>
+                      {project.dueDate && <span>Due <span className="mono">{fmtDate(project.dueDate)}</span></span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div>
+          <div className="sd-section-title">Recent docs</div>
+          <div className="sd-activity">
+            {recentDocs.map((doc, i) => (
+              <div
+                key={doc.id}
+                className="sd-activity-row"
+                style={{ cursor: "pointer" }}
+                onClick={() => navigate(`/docs/${doc.id}`)}
+              >
+                <div className="sd-activity-ico">
+                  <FileText size={12} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {doc.title}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--fg-muted)", marginTop: 2 }}>
+                    {fmtDate(doc.updatedAt)}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {recentDocs.length === 0 && (
+              <div style={{ padding: "16px 12px", fontSize: 13, color: "var(--fg-muted)" }}>No docs yet</div>
+            )}
+          </div>
+
+          {overdueTasks.length > 0 && (
+            <>
+              <div className="sd-section-title" style={{ marginTop: 20 }}>Overdue</div>
+              <div className="sd-activity">
+                {overdueTasks.slice(0, 5).map((task) => (
+                  <div
+                    key={task.id}
+                    className="sd-activity-row"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/projects/${task.projectId}/tasks`)}
+                  >
+                    <div className="sd-activity-ico">
+                      <Flag size={12} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {task.title}
+                      </div>
+                    </div>
+                    <span className="mono" style={{ fontSize: 12, fontWeight: 600, color: "var(--fg)", flexShrink: 0 }}>
+                      {fmtDate(task.dueDate)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
-        </article>
-      </section>
+
+          <div className="sd-section-title" style={{ marginTop: 20 }}>All projects</div>
+          <div className="sd-tbl">
+            {projects.slice(0, 6).map((p) => {
+              const prog = projectProgress.get(p.id) ?? { done: 0, total: 0, open: 0 };
+              const pct = prog.total > 0 ? Math.round((prog.done / prog.total) * 100) : 0;
+              return (
+                <div
+                  key={p.id}
+                  className="sd-tbl-row"
+                  style={{ gridTemplateColumns: "1fr 50px 60px", height: 38 }}
+                  onClick={() => navigate(`/projects/${p.id}`)}
+                >
+                  <div className="ttl">{p.name.split(/[·→]/).pop()?.trim() || p.name}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{p.status}</div>
+                  <div className="num" style={{ textAlign: "right" }}>{pct}%</div>
+                </div>
+              );
+            })}
+            {projects.length === 0 && (
+              <div style={{ padding: "20px 14px", textAlign: "center", color: "var(--fg-muted)", fontSize: 13 }}>
+                No projects yet
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
